@@ -23,8 +23,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 import timm
-
-assert timm.__version__ == "0.3.2"  # version check
+# assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
 
 import util.misc as misc
@@ -105,7 +104,9 @@ def get_args_parser():
 
 
 def main(args):
-    misc.init_distributed_mode(args)
+    # misc.init_distributed_mode(args)
+    misc.setup_for_distributed(is_master=True)  # hack
+    args.distributed = False
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
@@ -117,7 +118,7 @@ def main(args):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    cudnn.benchmark = True
+    # cudnn.benchmark = True
 
     # simple augmentation
     transform_train = transforms.Compose([
@@ -128,7 +129,7 @@ def main(args):
     dataset_train = datasets.ImageFolder(os.path.join(args.data_path, 'train'), transform=transform_train)
     print(dataset_train)
 
-    if True:  # args.distributed:
+    if args.distributed:
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
         sampler_train = torch.utils.data.DistributedSampler(
@@ -137,6 +138,7 @@ def main(args):
         print("Sampler_train = %s" % str(sampler_train))
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
+        global_rank = 0
 
     if global_rank == 0 and args.log_dir is not None:
         os.makedirs(args.log_dir, exist_ok=True)
