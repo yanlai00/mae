@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 import torch
+import torch.utils.data
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
 import torchvision.transforms as transforms
@@ -81,7 +82,7 @@ def get_args_parser():
     parser.add_argument('--data_path', default='/datasets01/imagenet_full_size/061417/', type=str,
                         help='dataset path')
     
-    parser.add_argument('--root_dir', default='/home/yy2694/mae/',
+    parser.add_argument('--root_dir', default='/scratch/yy2694/mae/',
                         help='path where to save')
     parser.add_argument('--name', default='experiment',
                         help='experiment name')
@@ -104,7 +105,6 @@ def get_args_parser():
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
                         help='number of distributed processes')
-    parser.add_argument('--local_rank', default=-1, type=int)
     parser.add_argument('--dist_on_itp', action='store_true')
     parser.add_argument('--dist_url', default='env://',
                         help='url used to set up distributed training')
@@ -118,7 +118,7 @@ def main(args):
     args.distributed = False
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
-    print("{}".format(args).replace(', ', ',\n'))
+    # print("{}".format(args).replace(', ', ',\n'))
 
     device = torch.device(args.device)
 
@@ -142,7 +142,7 @@ def main(args):
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
     dataset_train = datasets.ImageFolder(os.path.join(args.data_path), transform=transform_train)
-    print(dataset_train)
+    # print(dataset_train)
 
     if args.distributed:
         num_tasks = misc.get_world_size()
@@ -175,7 +175,7 @@ def main(args):
     model.to(device)
 
     model_without_ddp = model
-    print("Model = %s" % str(model_without_ddp))
+    # print("Model = %s" % str(model_without_ddp))
 
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
     
@@ -233,6 +233,7 @@ def main(args):
 if __name__ == '__main__':
     args = get_args_parser()
     args = args.parse_args()
+    args.local_rank = local_rank = int(os.environ["LOCAL_RANK"])
     args.output_dir = os.path.join(args.root_dir, args.name)
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     main(args)

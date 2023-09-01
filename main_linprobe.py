@@ -24,8 +24,6 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 import timm
-
-assert timm.__version__ == "0.3.2" # version check
 from timm.models.layers import trunc_normal_
 
 import util.misc as misc
@@ -80,10 +78,10 @@ def get_args_parser():
     parser.add_argument('--nb_classes', default=1000, type=int,
                         help='number of the classification types')
 
-    parser.add_argument('--output_dir', default='./output_dir',
-                        help='path where to save, empty for no saving')
-    parser.add_argument('--log_dir', default='./output_dir',
-                        help='path where to tensorboard log')
+    parser.add_argument('--root_dir', default='/scratch/yy2694/mae/',
+                        help='path where to save')
+    parser.add_argument('--name', default='experiment',
+                        help='experiment name')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')
     parser.add_argument('--seed', default=0, type=int)
@@ -114,7 +112,9 @@ def get_args_parser():
 
 
 def main(args):
-    misc.init_distributed_mode(args)
+    # misc.init_distributed_mode(args)
+    misc.setup_for_distributed(is_master=True)  # hack
+    args.distributed = False
 
     print('job dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
     print("{}".format(args).replace(', ', ',\n'))
@@ -144,7 +144,7 @@ def main(args):
     print(dataset_train)
     print(dataset_val)
 
-    if True:  # args.distributed:
+    if args.distributed:
         num_tasks = misc.get_world_size()
         global_rank = misc.get_rank()
         sampler_train = torch.utils.data.DistributedSampler(
@@ -163,10 +163,10 @@ def main(args):
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
         sampler_val = torch.utils.data.SequentialSampler(dataset_val)
+        global_rank = 0
 
-    if global_rank == 0 and args.log_dir is not None and not args.eval:
-        os.makedirs(args.log_dir, exist_ok=True)
-        log_writer = SummaryWriter(log_dir=args.log_dir)
+    if global_rank == 0 and not args.eval:
+        log_writer = SummaryWriter(log_dir=args.output_dir)
     else:
         log_writer = None
 
@@ -311,6 +311,6 @@ def main(args):
 if __name__ == '__main__':
     args = get_args_parser()
     args = args.parse_args()
-    if args.output_dir:
-        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    args.output_dir = os.path.join(args.root_dir, args.name)
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     main(args)

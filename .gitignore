@@ -1,5 +1,8 @@
 __pycache__
 output_dir/
+exp_*
 *.pth
 result*
 finetune*
+slurm*
+.ipynb_checkpoints/
